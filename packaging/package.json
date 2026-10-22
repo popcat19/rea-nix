@@ -1,0 +1,9 @@
+{
+  "name": "rea-nix-runtime",
+  "version": "6.7.0",
+  "private": true,
+  "description": "Purpose: Pin the released REA runtime and its npm dependency closure.",
+  "dependencies": {
+    "rea-agents": "6.7.0"
+  }
+}
