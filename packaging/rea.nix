@@ -1,17 +1,34 @@
 # Purpose: Install the published npm runtime without rebuilding upstream dist.
-{ pkgs, lib, buildNpmPackage, nodejs_24, makeWrapper, binutils, file }:
+{
+  pkgs,
+  lib,
+  buildNpmPackage,
+  nodejs_24,
+  makeWrapper,
+  binutils,
+  file,
+  procps,
+}:
 let
   elfPython = import ./elf-python.nix { inherit pkgs; };
-in buildNpmPackage {
+in
+buildNpmPackage {
   pname = "rea-agents";
   version = "6.7.0";
   src = lib.fileset.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [ ./package.json ./package-lock.json ];
+    fileset = lib.fileset.unions [
+      ./package.json
+      ./package-lock.json
+    ];
   };
   nodejs = nodejs_24;
   npmDepsHash = "sha256-mR3Sv+LI5b91IdbuXi4L80dFx6KHeNy3fr355xWuMMY=";
-  npmFlags = [ "--ignore-scripts" "--omit=dev" "--omit=optional" ];
+  npmFlags = [
+    "--ignore-scripts"
+    "--omit=dev"
+    "--omit=optional"
+  ];
   dontNpmBuild = true;
   nativeBuildInputs = [ makeWrapper ];
   installPhase = ''
@@ -21,7 +38,13 @@ in buildNpmPackage {
     makeWrapper ${nodejs_24}/bin/node "$out/bin/rea" \
       --add-flags "$out/lib/rea/node_modules/rea-agents/scripts/rea.mjs" \
       --set REA_PWNTOOLS_PYTHON ${elfPython}/bin/python3 \
-      --prefix PATH : ${lib.makeBinPath [ binutils file ]}
+      --prefix PATH : ${
+        lib.makeBinPath [
+          binutils
+          file
+          procps
+        ]
+      }
     ln -s rea "$out/bin/rea-agents"
     runHook postInstall
   '';

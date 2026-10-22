@@ -3,10 +3,46 @@ on:
   schedule:
     - cron: "17 4 * * 1"
   workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: rea-update
+  cancel-in-progress: false
 jobs:
-  validate:
+  update:
     runs-on: docker
     steps:
-      - uses: actions/checkout@v4
-      - run: ./scripts/update.sh "$(npm view rea-agents version)"
-      - run: git diff --check
+      - uses: https://github.com/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: https://github.com/cachix/install-nix-action@3c6342b75005b9cc7c7d4069c3e9179247c89012
+      - name: validate package
+        run: nix flake check
+      - name: update release
+        if: github.event_name != 'push'
+        run: nix develop --command bash -c './scripts/update.sh "$(npm view rea-agents version)"'
+      - name: publish validated update
+        if: github.event_name != 'push'
+        env:
+          UPDATE_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          git diff --check
+          if git diff --quiet; then exit 0; fi
+          git config user.name rea-updater
+          git config user.email rea-updater@dawn.wine
+          git add packaging/package.json packaging/package-lock.json packaging/rea.nix
+          git commit -m "chore(rea): update released npm package"
+          credential_file=$(mktemp)
+          trap 'rm -f "$credential_file"' EXIT
+          cat > "$credential_file" <<'SCRIPT'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo x-access-token ;;
+            *Password*) printf '%s\n' "$UPDATE_TOKEN" ;;
+          esac
+          SCRIPT
+          chmod 700 "$credential_file"
+          GIT_ASKPASS="$credential_file" GIT_TERMINAL_PROMPT=0 git push origin HEAD:main

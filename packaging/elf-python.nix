@@ -31,4 +31,9 @@ let
       };
     };
   };
-in python.withPackages (ps: [ ps.pwntools ps.pyelftools ps.unicorn ])
+in
+python.withPackages (ps: [
+  ps.pwntools
+  ps.pyelftools
+  ps.unicorn
+])
